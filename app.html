@@ -1,0 +1,712 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Joyful Data</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/p5.js"></script>
+  <script src="./libs/joy.js"></script>
+  <link rel="stylesheet" href="./libs/joy.css">
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css">
+  <link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
+  <style>
+    .lato {
+      font-family: 'Lato', sans-serif;
+    }
+    .disabled {
+      pointer-events: none;
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+
+<body class="lato bg-near-white ma4 dark-gray">
+  <div class="flex justify-between items-center">
+    <h1 class="f2">Joyful Data</h1>
+    <div>
+      <a class="f6 link pointer dim ba bw1 br2 ph3 pv2 mr2 dark-gray" href="./index.html">&larr; Go Back</a>
+      <button id="save-image" class="f6 link pointer dim ba bw1 br2 ph3 pv2 dark-gray b--dark-gray  disabled" onclick="saveImage();">
+        Save image as JPEG
+      </button>
+    </div>
+  </div>
+
+  <div class="mb3">
+    <input type="text" id="data-input" class="w-100 dark-gray b--dark-gray ph3 pv2 ba bw1 br2" placeholder="Copy URL to JSON" oninput="loadData();">
+  </div>
+
+  <div id="containers" class="ba br2 cf bg-white disabled">
+    <div id="editor-container" class="br pa3 w-50 fl vh-75 overflow-scroll"></div>
+    <div id="canvas-container" class="w-50 fl vh-75 overflow-scroll"></div>
+  </div>
+
+  <script>
+
+    /**********************************************************************
+     * GLOBALS
+     * – Data takes URL, a list of rows, a list of number and string columns
+     * – Themes: Categorical & Numerical
+     * – Drawing Instructions
+     * – P5 Cell Size
+     **********************************************************************/
+
+    var dataURL = "";
+    var data = [];
+    var dataNumCols = [];
+    var dataStrCols = [];
+
+    var themesCategorical = {
+      "Default": d3.schemeCategory10,
+      "Accent": d3.schemeAccent,
+      "Pastel": d3.schemePastel1,
+      "Tableau": d3.schemeTableau10
+    };      
+    var themesNumerical = {
+      "Blues (single hue)": d3.interpolateBlues,
+      "Greens (single hue)": d3.interpolateGreens,
+      "Oranges (single hue)": d3.interpolateOranges,
+      "Purple (single hue)": d3.interpolatePurples,
+      "Brown-Blue-Green diverging": d3.interpolateBrBG,
+      "Purple-Red-Green diverging": d3.interpolatePRGn
+    };      
+    var selectedFillCol;
+    var selectedFillTheme;
+    var selectedStrokeCol;
+    var selectedStrokeTheme;
+
+    var drawingInstructions = [];
+
+    var numCells = 8;
+
+    var cellSize;
+
+    /**********************************************************************
+     * JOY MODULES
+     * – Drawings: circle, square, line, text, etc...
+     * – Settings: fill, stroke, stroke weight
+     * – Transforms: translate, rotate, scale
+     **********************************************************************/
+
+    Joy.module("drawing", function() {
+
+      Joy.add({
+        name: "Draw a circle",
+        type: "drawing/circle",
+        tags: ["drawing", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Draw a circle of radius {id: 'rVariable', type: 'choose', options: " + JSON.stringify(dataNumCols) + ", placeholder: " + JSON.stringify(dataNumCols[0]) + "} x {id: 'rFactor', type: 'number', placeholder: 1}, at position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0})";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })
+
+      Joy.add({
+         name: "Draw [var] circles",
+         type: "drawing/circle-repeat",
+         tags: ["drawing", "action"],
+         init: function(my) {
+           Joy.initializeWithString(my, `Draw {id: 'nVariable', type: 'choose', options: ${JSON.stringify(dataNumCols)}, placeholder: "${dataNumCols[0]}"} x {id: 'nFactor', type: 'number', placeholder: 1} circles, of radius {id: 'r', type: 'number', placeholder: 10}px, at position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0}) with distance ({id: 'dx', type: 'number', placeholder: 10}, {id: 'dy', type: 'number', placeholder: 0})`);
+         },
+         onact: function(my) {
+           my.target.push(my.data);
+         }
+      })
+
+      Joy.add({
+         name: "Draw an ellipse",
+         type: "drawing/ellipse",
+         tags: ["drawing", "action"],
+         init: function(my) {
+           Joy.initializeWithString(my, `Draw an ellipse of width {id: 'w', type: 'number', placeholder: 20}px and height {id: 'hVariable', type: 'choose', options: ${JSON.stringify(dataNumCols)}, placeholder: "${dataNumCols[0]}"} x {id: 'hFactor', type: 'number', placeholder: 1}px, at position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0})`);
+         },
+         onact: function(my) {
+           my.target.push(my.data);
+         }
+       })
+
+      Joy.add({
+        name: "Draw a square",
+        type: "drawing/square",
+        tags: ["drawing", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Draw a square of size {id: 'sizeVariable', type: 'choose', options: " + JSON.stringify(dataNumCols) + ", placeholder: " + JSON.stringify(dataNumCols[0]) + "} x {id: 'sizeFactor', type: 'number', placeholder: 1}, at position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0})";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })
+
+      Joy.add({
+         name: "Draw [var] squares",
+         type: "drawing/square-repeat",
+         tags: ["drawing", "action"],
+         init: function(my) {
+           Joy.initializeWithString(my, `Draw {id: 'nVariable', type: 'choose', options: ${JSON.stringify(dataNumCols)}, placeholder: "${dataNumCols[0]}"} x {id: 'nFactor', type: 'number', placeholder: 1} squares, of size {id: 'size', type: 'number', placeholder: 10}px, at position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0}) with distance ({id: 'dx', type: 'number', placeholder: 10}, {id: 'dy', type: 'number', placeholder: 0})`);
+         },
+         onact: function(my) {
+           my.target.push(my.data);
+         }
+      })
+
+      Joy.add({
+         name: "Draw a rectangle",
+         type: "drawing/rect",
+         tags: ["drawing", "action"],
+         init: function(my) {
+           Joy.initializeWithString(my, `Draw a rectangle of width {id: 'w', type: 'number', placeholder: 20}px and height {id: 'hVariable', type: 'choose', options: ${JSON.stringify(dataNumCols)}, placeholder: "${dataNumCols[0]}"} x {id: 'hFactor', type: 'number', min: 1, max: 10, placeholder: 1}, at position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0})`);
+         },
+         onact: function(my) {
+           my.target.push(my.data);
+         }
+       })
+
+      Joy.add({
+        name: "Draw a horizontal line",
+        type: "drawing/horizontalLine",
+        tags: ["drawing", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Draw a horizontal line from position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0}) of length {id: 'lengthVariable', type: 'choose', options: " + JSON.stringify(dataNumCols) + ", placeholder: " + JSON.stringify(dataNumCols[0]) + "} x {id: 'lengthFactor', type: 'number', placeholder: 1}";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })
+
+      Joy.add({
+         name: "Draw [var] horizontal lines",
+         type: "drawing/horizontalLine-repeat",
+         tags: ["drawing", "action"],
+         init: function(my) {
+           Joy.initializeWithString(my, `Draw {id: 'nVariable', type: 'choose', options: ${JSON.stringify(dataNumCols)}, placeholder: "${dataNumCols[0]}"} x {id: 'nFactor', type: 'number', placeholder: 1} horizontal lines from position ({id: 'x1', type: 'number', placeholder: 0}, {id: 'y1', type: 'number', placeholder: 0}) of length {id: 'length', type: 'number', placeholder: 10}px, with distance ({id: 'dx', type: 'number', placeholder: 0}, {id: 'dy', type: 'number', placeholder: 10})`);
+         },
+         onact: function(my) {
+           my.target.push(my.data);
+         }
+      });
+
+      Joy.add({
+        name: "Draw a vertical line",
+        type: "drawing/verticalLine",
+        tags: ["drawing", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Draw a vertical line from position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0}) of length {id: 'lengthVariable', type: 'choose', options: " + JSON.stringify(dataNumCols) + ", placeholder: " + JSON.stringify(dataNumCols[0]) + "} x {id: 'lengthFactor', type: 'number', placeholder: 1}";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      });
+
+      Joy.add({
+         name: "Draw [var] vertical lines",
+         type: "drawing/verticalLine-repeat",
+         tags: ["drawing", "action"],
+         init: function(my) {
+           Joy.initializeWithString(my, `Draw {id: 'nVariable', type: 'choose', options: ${JSON.stringify(dataNumCols)}, placeholder: "${dataNumCols[0]}"} x {id: 'nFactor', type: 'number', placeholder: 1} vertical lines from position ({id: 'x1', type: 'number', placeholder: 0}, {id: 'y1', type: 'number', placeholder: 0}) of length {id: 'length', type: 'number', placeholder: 10}px, with distance ({id: 'dx', type: 'number', placeholder: 10}, {id: 'dy', type: 'number', placeholder: 0})`);
+         },
+         onact: function(my) {
+           my.target.push(my.data);
+         }
+      });
+
+      Joy.add({
+        name: "Draw text",
+        type: "drawing/text",
+        tags: ["drawing", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Draw the text {id: 'text', type: 'choose', options: " + JSON.stringify(dataStrCols) + ", placeholder: " + JSON.stringify(dataStrCols[0]) + "} at position ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0}) of size {id: 'size', type: 'number', placeholder: 8}";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      });
+    })
+
+    //_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    Joy.module("settings", function(){
+
+      Joy.add({
+        name: "Set fill color",
+        type: "settings/fill",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: "Set fill color to {id: 'color', type: 'color', placeholder: [0, 0, 1]}",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })
+
+      Joy.add({
+        name: "Set fill color by category",
+        type: "settings/fill-categorical",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Set fill color by {id: 'col', type: 'choose', options: " + JSON.stringify(dataStrCols) + ", placeholder: " + JSON.stringify(dataStrCols[0]) + "} with {id: 'theme', type: 'choose', options: " + JSON.stringify(Object.keys(themesCategorical)) + ", placeholder: " + JSON.stringify(Object.keys(themesCategorical)[0]) + "} theme";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })
+
+      Joy.add({
+        name: "Set fill color by value",
+        type: "settings/fill-numerical",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Set fill color by {id: 'col', type: 'choose', options: " + JSON.stringify(dataNumCols) + ", placeholder: " + JSON.stringify(dataNumCols[0]) + "} with {id: 'theme', type: 'choose', options: " + JSON.stringify(Object.keys(themesNumerical)) + ", placeholder: " + JSON.stringify(Object.keys(themesNumerical)[0]) + "} theme";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })      
+
+      Joy.add({
+        name: "Disable fill color",
+        type: "settings/noFill",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: "Disable fill color",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+
+      })
+
+      Joy.add({
+        name: "Set stroke color",
+        type: "settings/stroke",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: "Set stroke color to {id: 'color', type: 'color', placeholder: [0, 0, 0]}",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+
+      })
+
+      Joy.add({
+        name: "Set stroke color by category",
+        type: "settings/stroke-categorical",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Set stroke color by {id: 'col', type: 'choose', options: " + JSON.stringify(dataStrCols) + ", placeholder: " + JSON.stringify(dataStrCols[0]) + "} with {id: 'theme', type: 'choose', options: " + JSON.stringify(Object.keys(themesCategorical)) + ", placeholder: " + JSON.stringify(Object.keys(themesCategorical)[0]) + "} theme";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })
+
+      Joy.add({
+        name: "Set stroke color by value",
+        type: "settings/stroke-numerical",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: function(my) {
+          var instructionString = "Set stroke color by {id: 'col', type: 'choose', options: " + JSON.stringify(dataNumCols) + ", placeholder: " + JSON.stringify(dataNumCols[0]) + "} with {id: 'theme', type: 'choose', options: " + JSON.stringify(Object.keys(themesNumerical)) + ", placeholder: " + JSON.stringify(Object.keys(themesNumerical)[0]) + "} theme";
+          Joy.initializeWithString(my, instructionString);
+        },
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+      })      
+
+      Joy.add({
+        name: "Disable stroke color",
+        type: "settings/noStroke",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: "Disable stroke color",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+
+      })
+
+      Joy.add({
+        name: "Set stroke weight",
+        type: "settings/strokeWeight",
+        tags: ["settings", "action"], //specific to Joy. Don't bother
+        init: "Set stroke weight to {id: 'weight', type: 'number', placeholder: 1} px",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+
+      })
+    })
+    
+    //_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    Joy.module("transforms", function(){
+
+      Joy.add({
+        name: "Shift center of cells",
+        type: "transforms/translate",
+        tags: ["transforms", "action"], //specific to Joy. Don't bother
+        init: "Shift center of the cells by ({id: 'x', type: 'number', placeholder: 0}, {id: 'y', type: 'number', placeholder: 0})",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+
+      })
+
+      Joy.add({
+        name: "Rotate axis of cells",
+        type: "transforms/rotate",
+        tags: ["transforms", "action"], //specific to Joy. Don't bother
+        init: "Rotate axis of the cells by {id: 'angle', type: 'number', placeholder: 0} degrees",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+
+      })
+
+      Joy.add({
+        name: "Scale size of cells",
+        type: "transforms/scale",
+        tags: ["transforms", "action"], //specific to Joy. Don't bother
+        init: "Scale cells by {id: 'factor', type: 'number', placeholder: 1}",
+        onact: function(my) {
+          my.target.push(my.data);
+        }
+
+      })
+    })
+
+
+    /**********************************************************************
+     * INITIALIZE JOY
+     **********************************************************************/
+
+    function initJoy() {
+      window.app = Joy({
+        container: "#editor-container",
+        modules: ["drawing", "settings", "transforms", "instructions", "math"],
+        init: "Layout settings <br><br> Place {id:'numCells', type: 'number_raw', placeholder: 8} cells on each row. <br><br> Instructions to draw {id: 'instructions', type: 'actions'} <br><hr> {id: 'save', type: 'save'}", 
+        data: Joy.loadFromURL(),
+        onupdate: function(my) {
+          drawingInstructions = [];
+          my.instructions.act(drawingInstructions); //joy stuff. Call onact on each of the instructions. 
+        } 
+      })
+    }   
+
+    /**********************************************************************
+     * INITIALIZE P5
+     **********************************************************************/ 
+
+
+    function setup() {
+      var canvasContainer = document.getElementById("canvas-container");
+      var bounds = canvasContainer.getBoundingClientRect(); 
+      var canvas = createCanvas(bounds.width, bounds.height);
+      canvasContainer.appendChild(canvas.elt); // adding the canvas to the canvas-container. elt is used to reference the original DOM element
+      cellSize = bounds.width/numCells;
+      rectMode(CENTER);
+      angleMode(DEGREES);
+      textAlign(CENTER, CENTER);
+      textSize(8);
+
+    }
+
+    function draw() {
+      background("#F4F4F4");
+      if (window.app && numCells !== window.app.numCells.data.value) {
+         numCells = window.app.numCells.data.value;
+         rescaleCanvas();
+       }
+      for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var xIndex = i % numCells; // draws for 8 cells and moves to next x
+        var yIndex = floor(i/numCells); 
+        push();
+        translate(xIndex * cellSize + cellSize/2, yIndex * cellSize + cellSize/2);
+        drawCell(row);
+        pop();
+      }
+    }
+
+    function drawCell(row) {
+      selectedFillCol = undefined;
+      selectedFillTheme = undefined;
+      selectedStrokeCol = undefined;
+      selectedStrokeTheme = undefined;
+
+      push();
+      for (var i = 0; i < drawingInstructions.length; i++) {
+        var instruction = drawingInstructions[i];
+
+        if (selectedFillCol && selectedFillTheme) {
+          var kolor = getColor(selectedFillCol, selectedFillTheme, row);
+          fill(kolor); 
+        }
+
+        if (selectedStrokeCol && selectedStrokeTheme) {
+          var kolor = getColor(selectedStrokeCol, selectedStrokeTheme, row);
+          stroke(kolor); 
+        }  
+
+        if (instruction.type == "drawing/circle") {
+          var r = row[instruction.rVariable] * instruction.rFactor;
+          ellipse(instruction.x, instruction.y, r);
+        }
+
+        if (instruction.type == "drawing/circle-repeat") {
+          let n = row[instruction.nVariable] * instruction.nFactor;
+          for (let j = 0; j < n; j++) {
+            ellipse(instruction.x + instruction.dx * j, instruction.y + instruction.dy * j, instruction.r);
+          }           
+        }
+
+        if (instruction.type == "drawing/ellipse") {
+          ellipse(
+            instruction.x,
+            instruction.y,
+            instruction.w,
+            row[instruction.hVariable] * instruction.hFactor
+          );
+        }
+
+        if (instruction.type == "drawing/square") {
+          var size = row[instruction.sizeVariable] * instruction.sizeFactor;
+          rect(instruction.x, instruction.y, size, size);
+        }
+
+        if (instruction.type == "drawing/square-repeat") {
+          let n = row[instruction.nVariable] * instruction.nFactor;
+          for (let j = 0; j < n; j++) {
+            rect(instruction.x + instruction.dx * j, instruction.y + instruction.dy * j, instruction.size, instruction.size);
+          }           
+        }
+
+        if (instruction.type == "drawing/rect") {
+           rect(
+             instruction.x,
+             instruction.y,
+             instruction.w,
+             row[instruction.hVariable] * instruction.hFactor
+           );
+         }
+
+        if (instruction.type == "drawing/horizontalLine") {
+          var length = row[instruction.lengthVariable] * instruction.lengthFactor;
+          line(instruction.x, instruction.y, instruction.x + length, instruction.y);
+        }
+
+        if (instruction.type == "drawing/horizontalLine-repeat") {
+          let n = row[instruction.nVariable] * instruction.nFactor;
+          for (let j = 0; j < n; j++) {
+            let x = instruction.x1 + instruction.dx * j;
+            let y = instruction.y1 + instruction.dy * j;
+            line(x, y, x + instruction.length, y);
+          }           
+        }
+
+        if (instruction.type == "drawing/verticalLine") {
+          var length = row[instruction.lengthVariable] * instruction.lengthFactor;
+          line(instruction.x, instruction.y, instruction.x, instruction.y + length);
+        }
+
+        if (instruction.type == "drawing/verticalLine-repeat") {
+          let n = row[instruction.nVariable] * instruction.nFactor;
+          for (let j = 0; j < n; j++) {
+            let x = instruction.x1 + instruction.dx * j;
+            let y = instruction.y1 + instruction.dy * j;
+            line(x, y, x, y + instruction.length);
+          }           
+        }
+
+        if (instruction.type == "drawing/text") {
+          var textString = row[instruction.text];
+          push();
+          noStroke();
+          textSize(instruction.size);
+          text(textString, instruction.x, instruction.y);
+          pop();
+        }
+
+        if (instruction.type == "settings/fill") {
+          selectedFillCol = undefined;
+          selectedFillTheme = undefined;
+          fill(instruction.color);
+        }
+
+        if (instruction.type == "settings/fill-categorical") {
+          selectedFillCol = instruction.col;
+          selectedFillTheme = instruction.theme;
+        }
+
+        if (instruction.type == "settings/fill-numerical") {
+          selectedFillCol = instruction.col;
+          selectedFillTheme = instruction.theme;
+        }
+
+        if (instruction.type == "settings/noFill") {
+          selectedFillCol = undefined;
+          selectedFillTheme = undefined;
+          noFill();
+        }
+
+        if (instruction.type == "settings/stroke") {
+          selectedStrokeCol = undefined;
+          selectedStrokeTheme = undefined;
+          stroke(instruction.color);
+        }
+
+        if (instruction.type == "settings/stroke-categorical") {
+          selectedStrokeCol = instruction.col;
+          selectedStrokeTheme = instruction.theme;
+        }
+
+        if (instruction.type == "settings/stroke-numerical") {
+          selectedStrokeCol = instruction.col;
+          selectedStrokeTheme = instruction.theme;
+        }
+
+        if (instruction.type == "settings/noStroke") {
+          selectedStrokeCol = undefined;
+          selectedStrokeTheme = undefined;
+          noStroke();
+        }
+
+        if (instruction.type == "settings/strokeWeight") {
+          strokeWeight(instruction.weight);
+        }
+
+        if (instruction.type == "transforms/translate") {
+          translate(instruction.x, instruction.y);
+        }
+
+        if (instruction.type == "transforms/rotate") {
+         
+          rotate(instruction.angle);
+        }
+
+        if (instruction.type == "transforms/scale") {
+          scale(instruction.factor);
+        }
+      }
+      pop();
+    }
+
+    function saveImage() {
+      save("layout-genie.jpg");
+    }
+
+    function rescaleCanvas() {
+      var canvasContainer = document.getElementById("canvas-container");
+      var bounds = canvasContainer.getBoundingClientRect(); 
+      cellSize = bounds.width/numCells;
+      resizeCanvas(
+        bounds.width, 
+        max(bounds.height, ceil(data.length/numCells) * cellSize)
+      )
+    }
+
+    function getColor(col, theme, row) {
+
+      if (dataStrCols.includes(col)) {
+        var values = data.map(row => row[col]);
+        var uniqueValues = unique(values);
+        var uniqueValuesToColors = uniqueValues.map((value, i) => {
+          var colors = themesCategorical[theme]
+          return colors[i % colors.length];
+        });
+        var index = uniqueValues.findIndex(value => value == row[col]);
+        return uniqueValuesToColors[index];
+      }
+
+      if (dataNumCols.includes(col)) {
+        var values = data.map(row => row[col]);
+        var minValue = Math.min(...values);
+        var maxValue = Math.max(...values);
+        var colorFn = themesNumerical[theme];
+        return colorFn(map(row[col], minValue, maxValue, 0, 1));
+      }
+    }
+
+
+
+    /**********************************************************************
+     * MAIN
+     **********************************************************************/
+
+     async function main() {
+      var url = _getParameterByName("url"); //stolen from Joy
+      if (url) {
+        document.getElementById("data-input").value = url;
+        await loadData();
+      }
+     }
+
+     async function loadData() {
+      var value = document.getElementById("data-input").value;
+      if (isValidURL(value)) {
+        await fetch(value)
+          .then(function(data) {return data.json();})
+          .then(function(json) {data = json;})
+        dataURL = value;
+      }
+      else {
+        alert("Couldn't fetch data!");
+        return;
+      }
+
+      var cols = Object.keys(data[0]);
+      for (var i = 0; i < cols.length; i++) {
+        var col = cols[i];
+        if (typeof data[0][col] == "number") {
+          dataNumCols.push(col);
+        }
+        if (typeof data[0][col] == "string") {
+          dataStrCols.push(col);
+        }
+      }
+
+      document.getElementById("data-input").classList.add("disabled");
+      document.getElementById("containers").classList.remove("disabled");
+      document.getElementById("save-image").classList.remove("disabled");
+
+      rescaleCanvas();
+      initJoy();
+     }
+
+     window.onload = main;
+
+    /**********************************************************************
+     * UTILITIES 
+     **********************************************************************/
+     //All copy paste stuff
+
+    function isValidURL(str) {
+          var pattern = new RegExp(
+              "^(https?:\\/\\/)?" + // protocol
+             "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" + // domain name
+             "((\\d{1,3}\\.){3}\\d{1,3}))" + // OR ip (v4) address
+             "(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*" + // port and path
+              "(\\?[;&a-z\\d%_.~+=-]*)?" + // query string
+              "(\\#[-a-z\\d_]*)?$",
+            "i"
+          ); // fragment locator
+          return !!pattern.test(str);
+      }
+
+      function unique(array) {
+          return [... new Set(array)];
+      }
+
+  </script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-42126862-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-42126862-1');
+</script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Joyful Data</title>
+	<!-- Primary Meta Tags -->
+    <meta name="title" content="Joyful Data — make happy little data visuals; via @gramener">
+    <meta name="description" content="Bring your own datasets, design custom visuals in a live, interactive editor and save & share">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gramener.com/joyfuldata/">
+    <meta property="og:title" content="Joyful Data — make happy little data visuals; via @gramener">
+    <meta property="og:description" content="Bring your own datasets, design custom visuals in a live, interactive editor and save & share">
+    <meta property="og:image" content="https://gramener.com/joyfuldata/examples/getting-electricity-thumbnail.jpeg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://gramener.com/joyfuldata/">
+    <meta property="twitter:title" content="Joyful Data — make happy little data visuals; via @gramener">
+    <meta property="twitter:description" content="Bring your own datasets, design custom visuals in a live, interactive editor and save & share">
+    <meta property="twitter:image" content="https://gramener.com/joyfuldata/examples/getting-electricity-thumbnail.jpeg">
+
+	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css">
+	<link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
+	<style>
+		.lato {
+			font-family: 'Lato', sans-serif;
+		}
+		.madras {
+			/* Source: https://leaverou.github.io/css3patterns/#cross-dots */
+			background:
+				radial-gradient(black 3px, transparent 4px),
+				radial-gradient(black 3px, transparent 4px),
+				linear-gradient(#fff 4px, transparent 0),
+				linear-gradient(45deg, transparent 74px, transparent 75px, #a4a4a4 75px, #a4a4a4 76px, transparent 77px, transparent 109px),
+				linear-gradient(-45deg, transparent 75px, transparent 76px, #a4a4a4 76px, #a4a4a4 77px, transparent 78px, transparent 109px),#fff;
+				background-size: 109px 109px, 109px 109px,100% 6px, 109px 109px, 109px 109px;
+				background-position: 54px 55px, 0px 0px, 0px 0px, 0px 0px, 0px 0px;
+		}
+		.bg-examples {
+			background: rgb(94,44,165);
+			background: linear-gradient(14deg, rgba(94,44,165,1) 0%, rgba(255,255,255,1) 100%);
+		}
+		.bounce:hover {
+			animation: bounce 1000ms infinite;
+		}
+		@keyframes bounce {
+			0%, 100% {
+				transform: translateY(0);
+			}
+			50% {
+				transform: translateY(-10px);
+			}
+		}
+	</style>
+</head>
+<body class="lato bg-dark-gray light-gray">
+	<div id="fb-root"></div>
+	<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&version=v5.0"></script>
+	<div class="flex justify-center items-center pv5 madras purple">
+		<h1 class="f-subheadline lh-title measure pr4 br">Joyful Data</h1>
+		<h2 class="f2 lh-title measure pl4">make happy<br> little data visuals</h2>
+	</div>
+	<div class="bg-dark-gray light-gray mw8 ml-auto mr-auto pb4">
+		<div class="measure ml-auto mr-auto moon-gray pv4" style="font-size: 28px; letter-spacing: 0.05em; line-height: 1.5;">
+			Joyful Data is a tool for making beautiful data-driven graphics. Bring your own datasets, design custom visuals in a live, interactive editor and save &amp; share for fun, profit and universal glory. Joyful Data is built with <a class="white link pointer dim b" href="https://ncase.me/joy/" target="_blank">Joy.js</a>, a wonderful library by Nicky Case. 
+		</div>
+		<div class="flex justify-center items-center pb4">
+			<div class="w-40">
+				<div class="f2 lh-title pb3 ttu tracked fw5">Bring your own dataset</div>
+				<div class="lh-copy measure moon-gray pr2" style="font-size: 22px; letter-spacing: 0.03em;">Start with own dataset. Import from anywhere — a GitHub gist, or anywhere there are free roaming JSONs.</div>
+			</div>
+			<div class="ml5">
+				<img src="media/01-import.gif" width="370" height="235">
+			</div>
+		</div>
+		<div class="flex justify-center items-center pb4">
+			<div class="mr5">
+				<img src="media/02-draw.gif" width="370" height="235">
+			</div>
+			<div class="w-40">
+				<div class="f2 lh-title pb3 ttu tracked fw5">Create beautiful data graphics</div>
+				<div class="lh-copy measure moon-gray pr2" style="font-size: 22px; letter-spacing: 0.03em;">Now for the fun part! Use the live, interactive editor to build custom data graphics. Change anything: shapes, colors, transforms. No coding mojo necessary.</div>
+			</div>
+		</div>
+		<div class="flex justify-center items-center pb4">
+			<div class="w-40">
+				<div class="f2 lh-title pb3 ttu tracked fw5">Save & share</div>
+				<div class="lh-copy measure moon-gray pr2" style="font-size: 22px; letter-spacing: 0.03em;">Download your work as an image or save a link to share over the interwebs.</div>
+			</div>
+			<div class="ml5">
+				<img src="media/03-save.gif" width="370" height="235">
+			</div>
+		</div>
+	</div>
+	<div class="bg-light-gray dark-gray pa5">
+		<div class="tc measure ml-auto mr-auto dark-gray pb4" style="font-size: 28px; letter-spacing: 0.05em; line-height: 1.5;">
+			Here are some examples you can play with &amp; edit!
+		</div>
+		<div class="flex justify-center pb5">
+			<a href="examples/getting-electricity.html" class="f4 link pointer navy lh-copy mh4 shadow-2 ba b--transparent br4 bounce outline-transparent">
+				<img class="w-100 ba b--transparent br4" src="./examples/getting-electricity-thumbnail.jpeg" />
+				<div class="f4 tc pv2 purple tracked ttu b bg-light-gray ba br--bottom br4 b--transparent">Getting Electricity</div>
+			</a>
+			<a href="examples/industry-profits.html" class="f4 link pointer navy lh-copy mh4 shadow-2 ba b--transparent br4 bounce outline-transparent">
+				<img class="w-100 ba b--transparent br4" src="./examples/industry-profits-thumbnail.jpeg" />
+				<div class="f4 tc pv2 purple tracked ttu b bg-light-gray ba br--bottom br4 b--transparent">Industry Profits</div>
+			</a>
+		</div>
+		<div class="tc measure ml-auto mr-auto dark-gray pb4" style="font-size: 28px; letter-spacing: 0.05em; line-height: 1.5;">
+			Or jump right in and make your own!
+		</div>
+		<div class="flex justify-center">
+			<a class="f3 link pointer dim ba bw1 br4 ph4 pv3 mr2 bg-purple bn near-white b" href="./app">Get Started with Joyful Data</a>
+		</div>
+	</div>
+	<div class="flex justify-between items-center pv4 purple bg-light-red">
+		<div class="flex items-center">
+			<h1 class="f2 lh-title measure ph5 white">Joyful Data</h1>
+		</div>
+		<div class="flex items-start mt3">
+			<div class="mr3">
+				<!-- Twitter -->
+				<a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-text=" Try Joyful Data – a tool for creating data-driven visuals by @Gramener https://gramener.com/joyfuldata/" data-show-count="false">Tweet</a>
+				<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+			</div>
+
+			<div class="mr3">
+				<!-- LinkedIn -->
+				<script src="https://platform.linkedin.com/in.js" type="text/javascript">lang: en_US</script>
+				<script type="IN/Share" data-url="https://gramener.com/joyfuldata/"></script>
+			</div>
+
+			<div>
+				<!-- Facebook -->
+				<div class="fb-share-button" data-href="https://gramener.com/joyfuldata/" data-layout="button" data-size="small"><a target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fgramener.com%2Fjoyfuldata%2F&amp;src=sdkpreparse" class="fb-xfbml-parse-ignore">Share</a></div>
+			</div>
+		</div>
+		<img class="ph5" style="width: 200px" src="media/logo.png">
+
+	</div>
+	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-42126862-1"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+
+	  gtag('config', 'UA-42126862-1');
+	</script>
+</body>
+</html>
